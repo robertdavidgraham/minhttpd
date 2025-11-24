@@ -513,7 +513,7 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
             }
             break;
         case 2: /* trailing space */
-            if (result->year > 70)
+            if (result->year >= 70)
                 result->year += 1900;
             else
                 result->year += 2000;
@@ -703,6 +703,8 @@ parse_http_date(    unsigned state,
 
         state = _parse_http_date(c, state, result);
         if (state == DATE_VALID || state == DATE_INVALID) {
+            if (state == DATE_INVALID)
+                result->timestamp = -1;
             i++;
             break;
         }
