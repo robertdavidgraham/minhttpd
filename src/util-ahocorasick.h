@@ -57,9 +57,9 @@ smack_destroy(struct SMACK *smack);
  * systems).
  */
 void
-smack_add_pattern(        struct SMACK *  smack,
+smack_add_pattern(      struct SMACK *  smack,
                         const void *    pattern,
-                        unsigned        pattern_length,
+                        size_t          pattern_length,
                         size_t          id,
                         unsigned        flags);
 
@@ -150,7 +150,7 @@ smack_search_end(       struct SMACK *  smack,
  *      zero if regression test succeeds, non-zero on failure
  */
 int
-smack_selftest(void);
+smack_selftest(int debug_level);
 
 int
 smack_benchmark(void);

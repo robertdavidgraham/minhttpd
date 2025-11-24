@@ -260,30 +260,30 @@ struct SmackPattern
     /** The 'id' is what's reported back when the pattern matches.
      * This value can be either an integer, or a pointer to some
      * private data structure */
-    size_t                    id;
+    size_t id;
 
     /** This holds a malloc-ed copy of the pattern the caller gave us.
      * If the engine is running "nocase", then this is converted to
      * lower case */
-    unsigned char *          pattern;
+    unsigned char *pattern;
 
     /** The number of characters in the pattern */
-    unsigned                pattern_length;
+    size_t pattern_length;
 
     /** Whether this pattern is "anchored" (^) at the start of the
      * input. This means the pattern will only trigger when it's at the
      * very start, but not when it's in the middle */
-    unsigned                is_anchor_begin:1;
+    unsigned is_anchor_begin:1;
 
     /** Whether this pattern is "anchored" ($) at the END of the
      * input. This means the pattern will only trigger when it's
      * the last characters of the input, and the caller also calls
      * "smack_search_end()" */
-    unsigned                is_anchor_end:1;
+    unsigned is_anchor_end:1;
 
-    unsigned                is_snmp_hack:1;
+    unsigned is_snmp_hack:1;
     
-    unsigned                is_wildcards:1;
+    unsigned is_wildcards:1;
 };
 
 
@@ -665,7 +665,8 @@ smack_add_symbol(struct SMACK *smack, unsigned c)
  * Add all the symbols in a pattern.
  ****************************************************************************/
 static void
-smack_add_symbols(struct SMACK *smack, const unsigned char *pattern, unsigned pattern_length)
+smack_add_symbols(struct SMACK *smack, const unsigned char *pattern,
+                  size_t pattern_length)
 {
     unsigned i;
 
@@ -688,7 +689,7 @@ smack_add_symbols(struct SMACK *smack, const unsigned char *pattern, unsigned pa
  ****************************************************************************/
 static unsigned char *
 make_copy_of_pattern(   const unsigned char *pattern,
-                        unsigned pattern_length,
+                        size_t pattern_length,
                         unsigned is_nocase)
 {
     unsigned char *result;
@@ -725,7 +726,7 @@ void
 smack_add_pattern(
     struct SMACK *  smack,
     const void *    v_pattern,
-    unsigned        pattern_length,
+    size_t          pattern_length,
     size_t          id,
     unsigned        flags)
 {
@@ -828,7 +829,7 @@ static void
 smack_add_prefixes(struct SMACK *smack, struct SmackPattern *pat)
 {
     unsigned i;
-    unsigned pattern_length;
+    size_t pattern_length;
     unsigned char *pattern;
     int state=0;
 
@@ -1642,6 +1643,7 @@ smack_search_next_end(  struct SMACK *  smack,
  * 'rand()' is unrandom, when in fact we want the non-random properties of
  * rand() for regression testing.
  *****************************************************************************/
+#if 0
 static unsigned
 r_rand(unsigned *seed)
 {
@@ -1651,6 +1653,7 @@ r_rand(unsigned *seed)
     *seed = (*seed) * a + c;
     return (*seed)>>16 & 0x7fff;
 }
+#endif
 
 
 /****************************************************************************
