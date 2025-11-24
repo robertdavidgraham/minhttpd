@@ -6,8 +6,9 @@
 /** 
  */
 enum {
-    DATE_VALID = 0xFFFC,
-    DATE_INVALID = 0xFFFF
+    TEMP_INVALID = 0xFFFd,
+    DATE_VALID = 0xFFFc,
+    DATE_INVALID = 0xFFFf,
 };
 
 struct HttpDate {

@@ -2,7 +2,12 @@
     This module parses an HTTP date.
 
     There are three formats, from RFC 822 (email), RFC 850 (usenet/nntp),
-    and asctime().
+    and asctime(). They look like:
+
+        Sun, 06 Nov 1994 08:49:37 GMT
+        Sunday, 06-Nov-94 08:49:37 GMT
+        Sun Nov  6 08:49:37 1994
+
 
     The easiest way to describe their format, and how to parse them,
     is in "regex capture" format, supported by such things as PCRE.
@@ -52,7 +57,7 @@ _compile(const char *name, const char **strings) {
     struct SMACK *dfa;
     size_t i;
 
-    dfa = smack_create(name, SMACK_CASE_INSENSITIVE);
+    dfa = smack_create(name, 0);
     for (i=0; strings[i]; i++)
         smack_add_pattern(dfa, strings[i], 0, i, SMACK_ANCHOR_BEGIN);
     smack_compile(dfa);
@@ -94,7 +99,7 @@ init_http_date_parser(void) {
     wk = _compile("wk", wknames);
     mon1 = _compile("mon1", mon1names);
     mon2 = _compile("mon2", mon2names);
-    mon3 = mon2;
+    mon3 = mon1;
 }
 
 /* Public domain implementation of timegm() from OpenBSD */
@@ -169,6 +174,9 @@ _calculate_timestamp(const struct HttpDate *d) {
 
 static int
 _is_valid_date(int year, int month, int day) {
+        if (year < 1970)
+            return 0; /* invalid */
+
         switch (month) {
         case 1:  // Jan
         case 3:  // Mar
@@ -178,7 +186,7 @@ _is_valid_date(int year, int month, int day) {
         case 10: // Oct
         case 12: // Dec
             if (day > 31)
-                return 0; /* false */
+                return 0; /* invalid */
             break;
 
         case 4:  // Apr
@@ -186,28 +194,58 @@ _is_valid_date(int year, int month, int day) {
         case 9:  // Sep
         case 11: // Nov
             if (day > 31)
-                return 0; /* false */
+                return 0; /* invalid */
             break;
 
         case 2:  // Feb
             if (is_leap(year)) {
                 if (day > 29)
-                    return 0;
+                    return 0; /* invalid */
             } else {
                 if (day > 28)
-                    return 0;
+                    return 0; /* invalid */
             }
             break;
 
         default:
-            return 0;
+            return 0; /* invalid */
     }
 
-    return 1; /* true, nubmers are valid */
+    return 1; /* true, numbers are valid */
+}
+
+/**
+ * Transition to the invalid state. If we are parsing until CRLF,
+ * then we transition to a "temporary" invalid state until we 
+ * reach the end-of-line.
+ */
+static unsigned INVALID(struct HttpDate *result) {
+    if (result->is_until_crlf)
+        return TEMP_INVALID;
+    else
+        return DATE_INVALID;
+}
+
+/**
+ * Don't transition, but continue in the current state, but
+ * transition to the designated inner state.
+ */
+static unsigned CONTINUE(unsigned state, unsigned state_inner) {
+    return state | (state_inner << 16);
 }
 
 unsigned 
 _parse_http_date(char c, unsigned state, struct HttpDate *result) {
+
+    /*
+     * This is the list of all the (outer) states in our state-machine.
+     *
+     * WARNING: DON'T CHANGE THE ORDER.
+     * We often simply go to the next sequential state (state + 1), so
+     * the order is important. For example, all the hour, minute, and
+     * second states execute the same code that increments the state
+     * going to the next one.
+     */
     enum {
         START=0,
         DAYNAME,
@@ -222,23 +260,49 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
         MON3NAME, DAY3NUM, HOUR3, MIN3, SEC3, YEAR3,
 
         VALID_CR, VALID_CRLF,
-
+        
+        _TEMP_INVALID = TEMP_INVALID,
         _DATE_VALID = DATE_VALID,
         _DATE_INVALID = DATE_INVALID,
     };
 
-    unsigned state_outer = state & 0xFFFF;
     unsigned state_inner = (state>>16) & 0xFFFF;
     size_t id;
 
-    switch (state_outer) {
+    /* mask off the inner state */
+    state = state & 0xFFFF;
+
+    /* Carriage returns and line-feeds are never allowed except
+     * at the end of the HTTP date field. Handle these characters
+     * separately, REGARDLESS of which state we are processing */
+    if (c == '\r' && result->is_until_crlf) {
+        if (state == VALID_CR)
+            return VALID_CRLF;
+        else
+            return TEMP_INVALID;
+    }
+    if (c == '\n' && result->is_until_crlf) {
+        if (state == VALID_CRLF)
+            return DATE_VALID;
+        else
+            return DATE_INVALID;
+    }
+
+    /*
+     * Handle the incoming character according to the current
+     * state, and then return a transition to the next state.
+     * 
+     * There is always a return from all the cases. It never
+     * drops down afterwards.
+     */
+    switch (state) {
     case START:
         if (c == ' ' || c == '\t') {
             /* HTTP allows any amount of leading whitespace,
              * where whitespace is defined as either the
              * space character 0x20 or the horizontal-tab character
              * 0x09 */
-            break;
+            return CONTINUE(state, state_inner);
         } else {
 
             /* Start the numbers at zero */
@@ -252,20 +316,20 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
             /* Initialize searching */
             id = smack_search_next(wk, &state_inner, &c, 0, 1);
             if (id == SMACK_NOT_YET_FOUND)
-                state_outer = DAYNAME;
+                return CONTINUE(DAYNAME, state_inner);
             else if (id == SMACK_CANT_FIND)
-                return _DATE_INVALID;
+                return INVALID(result);
         }
         break;
 
     case DAYNAME:
         /* Keep matching the day field */
         id = smack_search_next(wk, &state_inner, &c, 0, 1);
-        if (id == SMACK_NOT_YET_FOUND) {
-            ;
-        } else if (id == SMACK_CANT_FIND) {
-            return _DATE_INVALID;
-        } else {
+        if (id == SMACK_NOT_YET_FOUND)
+            return CONTINUE(state, state_inner);
+        else if (id == SMACK_CANT_FIND)
+            return INVALID(result);
+        else {
             /* We found a day name */
             state_inner = 0;
             result->weekday = id % 7; /* 0=Sun, 1=Mon, ..., 6=Sat */
@@ -277,82 +341,191 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
                 return DAY2NUM;
             case 2:/*asctime*/
                 return MON3NAME;
-            default:/* not possible */
-                return _DATE_INVALID;
             }
         }
-        break;
+        return INVALID(result);
 
-    /* Sun, 06 Nov 1994 08:49:37 GMT 
-      [     ^^^                     ]*/
+    /*[.....XXX.....................]
+       Sun, 06 Nov 1994 08:49:37 GMT 
+      [.....XXX.....................]*/
+    /*[.........XXX...................]
+        Sunday, 06-Nov-94 08:49:37 GMT
+      [.........XXX...................]*/
     case DAY1NUM:
+    case DAY2NUM:
         switch (state_inner) {
         case 0: /* first digit */
         case 1: /* second digit */
             if (!isdigit(c&0xFF))
-                return _DATE_INVALID;
+                return INVALID(result);
             else {
                 result->day = result->day * 10 + (c - '0');
-                state_inner++;
-                if (result->day > 31) {
-                    return _DATE_INVALID;
-                }
+                if (result->day > 31)
+                    return INVALID(result);
+                else
+                    return CONTINUE(state, state_inner+1);
             }
             break;
         case 2: /* trailing space */
-            if (c != ' ')
-                return _DATE_INVALID;
-            else {
-                return MON1NAME;
-            }
+            if (state == DAY1NUM && c != ' ')
+                return INVALID(result);
+            else if (state == DAY2NUM && c != '-')
+                return INVALID(result);
+            else
+                return state + 1; /* MON1NAME or MON2NAME */
             break;
         default:/* not possible */
-            return _DATE_INVALID;
+            return INVALID(result);
         }
         break;
 
-    /* Sun, 06 Nov 1994 08:49:37 GMT 
-      [        ^^^^                 ]*/
+    /*[........XXX..................]
+       Sun Nov  6 08:49:37 1994 
+      [........XXX..................]*/
+    case DAY3NUM:
+        switch (state_inner) {
+        case 0: /* first digit */
+            if (c == ' ')
+                return CONTINUE(state, state_inner + 1);
+            else if (!isdigit(c&0xFF))
+                return INVALID(result);
+            else {
+                result->day = result->day * 10 + (c - '0');
+                if (result->day > 3)
+                    return INVALID(result);
+                else
+                    return CONTINUE(state, state_inner + 1);
+            }
+            break;
+        case 1: /* second digit */
+            if (!isdigit(c&0xFF))
+                return INVALID(result);
+            else {
+                result->day = result->day * 10 + (c - '0');
+                if (result->day > 31)
+                    return INVALID(result);
+                else
+                    return CONTINUE(state, state_inner+1);
+            }
+            break;
+        case 2: /* trailing space */
+            if (state == DAY1NUM && c != ' ')
+                return INVALID(result);
+            else if (state == DAY2NUM && c != '-')
+                return INVALID(result);
+            else
+                return HOUR3;
+            break;
+        default:/* not possible */
+            return INVALID(result);
+        }
+        break;
+
+    /*[........XXXX.................]
+       Sun, 06 Nov 1994 08:49:37 GMT 
+      [........XXXX.................]*/
+    /*[........XXXX.................]
+       Sun Nov  6 08:49:37 1994
+      [....XXXX.....................]*/
     case MON1NAME:
-        id = smack_search_next(mon1, &state_inner, &c, 0, 1);
+    case MON3NAME:
+        id = smack_search_next(/**/mon1/**/, &state_inner, &c, 0, 1);
         if (id == SMACK_NOT_YET_FOUND)
-            ;
+            return CONTINUE(state, state_inner);
         else if (id == SMACK_CANT_FIND || id >= 12)
-            return _DATE_INVALID;
+            return INVALID(result);
         else {
-            result->month = id + 1; /* [1..12] */            
-            return YEAR1;
+            result->month = (unsigned char)id + 1; /* [1..12] */            
+            return state + 1; /* YEAR1 or DAY3NUM */
         }
         break;
 
-    /* Sun, 06 Nov 1994 08:49:37 GMT 
-      [            ^^^^^            ]*/
+    /*[............XXXX...............]
+        Sunday, 06-Nov-94 08:49:37 GMT
+      [............XXXX...............]*/
+    case MON2NAME:
+        id = smack_search_next(/**/mon2/**/, &state_inner, &c, 0, 1);
+        if (id == SMACK_NOT_YET_FOUND)
+            return CONTINUE(state, state_inner);
+        else if (id == SMACK_CANT_FIND || id >= 12)
+            return INVALID(result);
+        else {
+            result->month = (unsigned char)id + 1; /* [1..12] */            
+            return YEAR2;
+        }
+        break;
+
+    /*[............XXXXX............]
+       Sun, 06 Nov 1994 08:49:37 GMT 
+      [............XXXXX............]*/
+    /*[....................XXXX]
+       Sun Nov  6 08:49:37 1994 
+      [....................XXXX]*/                
     case YEAR1:
+    case YEAR3:
         switch (state_inner) {
         case 0: /* first digit */
         case 1: /* second digit */
         case 2: /* third digit */
         case 3: /* fourth digit */
             if (c == ' ' && state_inner == 2)
-                return _DATE_INVALID; /*TODO: maybe handle 2-digit dates here */
+                return INVALID(result); /*TODO: maybe handle 2-digit dates here */
             else if (!isdigit(c&0xFF))
-                return _DATE_INVALID;
+                return INVALID(result);
             else {
                 result->year = result->year * 10 + (c - '0');
-                state_inner++;
+                if (state_inner == 3 && state == YEAR3) {
+                    result->timestamp = _calculate_timestamp(result);
+                    if (result->is_until_crlf)
+                        return VALID_CR;
+                    else
+                        return DATE_VALID;
+                } else
+                    return CONTINUE(state, state_inner + 1);
             }
             break;
         case 4: /* trailing space */
             if (!_is_valid_date(result->year, result->month, result->day))
-                return _DATE_INVALID;
+                return INVALID(result);
             else if (c != ' ')
-                return _DATE_INVALID;
+                return INVALID(result);
             else {
                 return HOUR1;
             }
             break;
         default:/* not possible */
-            return _DATE_INVALID;
+            return INVALID(result);
+        }
+        break;
+
+    /*[............XXXX...............]
+        Sunday, 06-Nov-94 08:49:37 GMT
+      [............XXXX...............]*/
+    case YEAR2:
+        switch (state_inner) {
+        case 0: /* first digit */
+        case 1: /* second digit */
+            if (!isdigit(c&0xFF))
+                return INVALID(result);
+            else {
+                result->year = result->year * 10 + (c - '0');
+                return CONTINUE(state, state_inner + 1);
+            }
+            break;
+        case 2: /* trailing space */
+            if (result->year > 70)
+                result->year += 1900;
+            else
+                result->year += 2000;
+            if (!_is_valid_date(result->year, result->month, result->day))
+                return INVALID(result);
+            else if (c != ' ')
+                return INVALID(result);
+            else
+                return HOUR2;
+            break;
+        default:/* not possible */
+            return INVALID(result);
         }
         break;
 
@@ -365,22 +538,23 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
         case 0: /* first digit */
         case 1: /* second digit */
             if (!isdigit(c&0xFF))
-                return _DATE_INVALID;
+                return INVALID(result);
             else {
                 result->hour = result->hour * 10 + (c - '0');
-                state_inner++;
+                if (result->hour > 24)
+                    return INVALID(result);
+                else
+                    return CONTINUE(state, state_inner + 1);
             }
             break;
         case 2: /* trailing colon*/
             if (c != ':')
-                return _DATE_INVALID;
-            else {
-                state_outer ++; /* go to MINx */
-                state_inner = 0;
-            }
+                return INVALID(result);
+            else
+                return state + 1; /* go to MINx */
             break;
         default:/* not possible */
-            return _DATE_INVALID;
+            return INVALID(result);
         }
         break;
 
@@ -393,22 +567,23 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
         case 0: /* first digit */
         case 1: /* second digit */
             if (!isdigit(c&0xFF))
-                return _DATE_INVALID;
+                return INVALID(result);
             else {
                 result->minute = result->minute * 10 + (c - '0');
-                state_inner++;
+                if (result->minute > 59)
+                    return INVALID(result);
+                else
+                    return CONTINUE(state, state_inner + 1);
             }
             break;
         case 2: /* trailing colon*/
             if (c != ':')
-                return _DATE_INVALID;
-            else {
-                state_outer ++; /* go to SECx */
-                state_inner = 0;
-            }
+                return INVALID(result);
+            else
+                return state + 1; /* go to SECx */
             break;
         default:/* not possible */
-            return _DATE_INVALID;
+            return INVALID(result);
         }
         break;
 
@@ -421,22 +596,23 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
         case 0: /* first digit */
         case 1: /* second digit */
             if (!isdigit(c&0xFF))
-                return _DATE_INVALID;
+                return INVALID(result);
             else {
                 result->second = result->second * 10 + (c - '0');
-                state_inner++;
+                if (result->second > 60) /* leap second */
+                    return INVALID(result);
+                else
+                    return CONTINUE(state, state_inner + 1);
             }
             break;
         case 2: /* trailing colon*/
             if (c != ' ')
-                return _DATE_INVALID;
-            else {
-                state_outer ++; /* go to thing after SECx */
-                state_inner = 0;
-            }
+                return INVALID(result);
+            else
+                return state + 1; /* go to thing after SECx */
             break;
         default:/* not possible */
-            return _DATE_INVALID;
+            return INVALID(result);
         }
         break;
 
@@ -445,29 +621,21 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
      * [..........................XXX]*/
     case GMT1:
     case GMT2:
-        if ("GMT"[state_inner] != c)
-            return _DATE_INVALID;
-        else if (++state_inner == 3) {
-            result->timestamp = _calculate_timestamp(result);
+        if ("GMT"[state_inner] == c) {
+            if (state_inner == 2) {
+                result->timestamp = _calculate_timestamp(result);
 
-            /* We are done parsing the date. Now, we may need to parse to the
-             * end of the line. */
-            if (result->is_until_crlf) {
-                return VALID_CR;
-            } else {
-                return _DATE_VALID;
-            }
+                /* We are done parsing the date. Now, we may need to parse to the
+                 * end of the line. */
+                if (result->is_until_crlf)
+                    return VALID_CR;
+                else
+                    return _DATE_VALID;
+            } else
+               return CONTINUE(state, state_inner + 1);     
         }
-        break;
-
-    case DAY2NUM:
-    case MON2NAME:
-    case YEAR2:
-        break;
-
-    case MON3NAME:
-    case DAY3NUM:
-    case YEAR3:
+        else
+            return INVALID(result);
         break;
 
     case VALID_CR:
@@ -484,34 +652,39 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
         case '\r':
             return VALID_CRLF;
         default:
-            return _DATE_INVALID;
+            return INVALID(result);
         }
         break;
 
     case VALID_CRLF:
         /* At this point, the only valid character is a line-feed
          * ending the line */
-        if (c == '\n') {
+        if (c == '\n')
             return _DATE_VALID;
-        } else {
-            return _DATE_INVALID;
-        }
+        else
+            return INVALID(result);
         break;
 
     case _DATE_VALID:
         /* There shouldn't be anything after the date, but allow spaces */
         if (c == ' ' || c == '\t')
-            break;
-        else {
+            return CONTINUE(state, 0);
+        else
             /* illegal character after the date, so now invalid */
-            return _DATE_INVALID;
-        }
+            return INVALID(result);
         break;
+    case TEMP_INVALID:
+        if (c == '\n')
+            return DATE_INVALID;
+        else
+            return CONTINUE(state, 0);
+        break;
+
     case _DATE_INVALID:
         break;
     }
 
-    return state_outer | (state_inner<<16);
+    return state | (state_inner<<16);
 }
 
 
@@ -530,6 +703,7 @@ parse_http_date(    unsigned state,
 
         state = _parse_http_date(c, state, result);
         if (state == DATE_VALID || state == DATE_INVALID) {
+            i++;
             break;
         }
     }
