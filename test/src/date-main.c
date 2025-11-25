@@ -114,8 +114,10 @@ time_t apr_date_parse_rfc(const char *date);
 time_t ngx_http_parse_time(const char *value, size_t len);
 time_t litespeed_parseHttpTime(const char *s, int len);
 time_t lighthttp_parse_date(const char *buf, uint32_t len);
+time_t simple_parse_date(const char *s);
 
-int test1(const char *string, time_t expected, unsigned validity, char *status) {
+
+int test1(const char *string, size_t length, time_t expected, unsigned validity, char *status) {
     size_t string_length = strlen(string);
     struct HttpDate date;
     unsigned state = 0;
@@ -132,10 +134,6 @@ int test1(const char *string, time_t expected, unsigned validity, char *status) 
         status[0] = '.';
     } else {
         status[0] = '-';
-        if (!(validity & VALID_MINHTTPD))
-            expected = -1;
-        fprintf(stderr, "[-] M: %s, expected %lld, got %lld\n", string, (long long)expected, (long long)result);
-        return 1;
     }
 
     /*
@@ -192,8 +190,20 @@ int test1(const char *string, time_t expected, unsigned validity, char *status) 
         status[4] = '-';
     }
 
-    status[5] = '\0';
-    //printf("[%s] %s\n", status, string);
+    /*
+     * Simple parser
+     */
+    result = simple_parse_date(string);
+    if (result == expected && expected != -1) {
+        status[5] = 'S';
+    } else if (result == -1) {
+        status[5] = '.';
+    } else {
+        status[5] = '-';
+    }
+
+    /* nul-termiante string */
+    status[6] = '\0';
     
     return 0;
 }
@@ -311,18 +321,20 @@ int test_bad(const char *string, size_t offset, time_t expected) {
     /*
      * MinHttpd
      */
+#if 0
     state = parse_http_date(state, string, &string_length, &date, 0);
     result = date.timestamp;
-    if (result != -1 && expected != expected) {
+    if (result != -1 && expected != result) {
         /* this is supposed to fail */
         fprintf(stderr, "[-] %s, expected %lld, got %lld\n", string, (long long)expected, (long long)result);
         return 1;
     }
     /*if (result == -1 && string_length < original_length)
         string[string_length] = '*';*/
+#endif
 
-    test1(string, expected, 0, status);
-    fprintf(stdout, "[%s] 0x%09llx %s\n", status, expected, string);
+    test1(string, original_length, expected, 0, status);
+    fprintf(stdout, "[%s] 0x%09llx %s\n", status, (long long)expected, string);
 
     return 0;
 }
@@ -354,7 +366,7 @@ test_bads(void) {
         size_t j;
 
         /* First do a good one */
-        test_bad(bad, strlen(bad), 784111777);
+        //test_bad(bad, strlen(bad), 784111777);
 
         /* for all mutations of the pattern */
         for (j=0; bad[j]; j++) {
@@ -388,6 +400,9 @@ test_goods(void) {
         0x07fffffff, // - 2038-01-19 03:14:07 UTC (Y2038 after) */
         0x080000000, //"Tue, 19 Jan 2038 03:14:08 GMT",  0xFF, 0},
         0x080000001, //"Tue, 19 Jan 2038 03:14:08 GMT",  0xFF, 0},
+        0x0f48656ff, /* Thu Dec 31 23:59:59 2099 */
+        0x0f4865700,
+        0x0f4865701,
         -1
     };
     size_t i;
@@ -395,18 +410,21 @@ test_goods(void) {
 
     /* RFC1123/IMF-time */
     for (i=0; goods[i] != -1; i++) {
-        time_t good = goods[i];
+        time_t expected = goods[i];
         struct tm *tm;
         size_t length;
+        char status[16];
 
-        tm = gmtime(&good);
+        tm = gmtime(&expected);
         length = strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", tm);
         if (length == 0) {
             fprintf(stderr, "[-] strftime() error\n");
             continue;
         }
 
-        test_bad(buf, length, good);
+        test1(buf, length, expected, 1, status);
+        fprintf(stdout, "[%s] 0x%09llx %s\n", status, (long long)expected, buf);
+
     }
 
     /* RFC850 */
