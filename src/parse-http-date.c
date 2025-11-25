@@ -409,9 +409,7 @@ _parse_http_date(char c, unsigned state, struct HttpDate *result) {
             }
             break;
         case 2: /* trailing space */
-            if (state == DAY1NUM && c != ' ')
-                return INVALID(result);
-            else if (state == DAY2NUM && c != '-')
+            if (c != ' ')
                 return INVALID(result);
             else
                 return HOUR3;

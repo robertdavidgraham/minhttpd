@@ -1,5 +1,6 @@
 /* This code pulled from nginx/1.1.6 source tree */
 #include <stddef.h>
+#include <stdint.h>
 #include <time.h>
 typedef int ngx_int_t;
 typedef unsigned ngx_uint_t;
@@ -13,9 +14,9 @@ typedef unsigned ngx_uint_t;
 
 static ngx_uint_t  mday[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 time_t
-ngx_http_parse_time(u_char *value, size_t len)
+ngx_http_parse_time(const unsigned char *value, size_t len)
 {
-    u_char      *p, *end;
+    const unsigned char      *p, *end;
     ngx_int_t    month;
     ngx_uint_t   day, year, hour, min, sec;
     uint64_t     time;

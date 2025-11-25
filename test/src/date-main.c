@@ -1,6 +1,10 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "../../src/parse-http-date.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <time.h>
+#include <ctype.h>
 
 /* For older compilers that don't define these */
 #ifndef __bool_true_false_are_defined
@@ -109,6 +113,92 @@ struct testcases_t crlf_testcases[] = {
 time_t apr_date_parse_rfc(const char *date);
 time_t ngx_http_parse_time(const char *value, size_t len);
 time_t litespeed_parseHttpTime(const char *s, int len);
+time_t lighthttp_parse_date(const char *buf, uint32_t len);
+
+int test1(const char *string, time_t expected, unsigned validity, char *status) {
+    size_t string_length = strlen(string);
+    struct HttpDate date;
+    unsigned state = 0;
+    time_t result;
+
+    /*
+     * MinHttpd
+     */
+    state = parse_http_date(state, string, &string_length, &date, 0);
+    result = date.timestamp;
+    if (result == expected && expected != -1) {
+        status[0] = 'M';
+    } else if (result == -1) {
+        status[0] = '.';
+    } else {
+        status[0] = '-';
+        if (!(validity & VALID_MINHTTPD))
+            expected = -1;
+        fprintf(stderr, "[-] M: %s, expected %lld, got %lld\n", string, (long long)expected, (long long)result);
+        return 1;
+    }
+
+    /*
+     * Apache
+     */
+    result = apr_date_parse_rfc(string);
+    if (result == 0)
+        result = -1;
+    if (result == expected && expected != -1) {
+        status[1] = 'A';
+    } else if (result == -1) {
+        status[1] = '.';
+    } else {
+        status[1] = '-';
+    }
+
+    /*
+     * Nginx
+     */
+    result = ngx_http_parse_time(string, string_length);
+    if (result == expected && expected != -1) {
+        status[2] = 'N';
+    } else if (result == -1) {
+        status[2] = '.';
+    } else {
+        status[2] = '-';
+    }
+
+    /*
+     * LiteSpeed (OpenLiteSpeed)
+     */
+    result = litespeed_parseHttpTime(string, (int)string_length);
+    if (result == 0)
+        result = -1;
+    if (result == expected && expected != -1) {
+        status[3] = 'L';
+    } else if (result == -1) {
+        status[3] = '.';
+    } else {
+        status[3] = '-';
+    }
+
+    /*
+     * LightHTTPD (Fly Light)
+     */
+    result = lighthttp_parse_date(string, (unsigned)string_length);
+    if (result == 0)
+        result = -1;
+    if (result == expected && expected != -1) {
+        status[4] = 'F';
+    } else if (result == -1) {
+        status[4] = '.';
+    } else {
+        status[4] = '-';
+    }
+
+    status[5] = '\0';
+    //printf("[%s] %s\n", status, string);
+    
+    return 0;
+}
+
+
 
 /**
  * Runs a single testcase with parser differentials
@@ -210,48 +300,197 @@ if (expected_length && expected_length != string_length) {
 
 #endif
 
-int test_bad(const char *string, size_t offset) {
-    time_t expected = -1;
-    unsigned validity = 0;
+int test_bad(const char *string, size_t offset, time_t expected) {
     size_t string_length = strlen(string);
+    size_t original_length = string_length;
     struct HttpDate date;
     unsigned state = 0;
     time_t result;
+    char status[16];
     
     /*
      * MinHttpd
      */
     state = parse_http_date(state, string, &string_length, &date, 0);
     result = date.timestamp;
-    if (result != -1) {
+    if (result != -1 && expected != expected) {
         /* this is supposed to fail */
         fprintf(stderr, "[-] %s, expected %lld, got %lld\n", string, (long long)expected, (long long)result);
         return 1;
     }
-    fprintf(stderr, "[+] %s\n", string);
-    fprintf(stderr, "    %.*s^\n", (int)string_length, "                           ");
-    fprintf(stderr, "    %.*s|\n", (int)offset, "                           ");
+    /*if (result == -1 && string_length < original_length)
+        string[string_length] = '*';*/
+
+    test1(string, expected, 0, status);
+    fprintf(stdout, "[%s] 0x%09llx %s\n", status, expected, string);
 
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+/**
+ * This test bad variations of good strings. It simply takes the 'x'
+ * character and replaces it in the string, replacing one character
+ * at a time.
+ *
+ * This verifies that the string fails, but also, it verifies the 
+ * location of the failure, to make sure it's been detected correct.
+ * One of the features of a state-machine parser is that we have a simpler
+ * way of knowing where the failure was in the string.
+ */
+static int
+test_bads(void) {
+    static const char *bads[] = {
+        "Sun, 06 Nov 1994 08:49:37 GMT\0\0\0\0",
+        "Sunday, 06-Nov-94 08:49:37 GMT",
+        "Sun Nov  6 08:49:37 1994",
+        0
+    };
     size_t i;
-    const char *fmt1 = "Sun, 06 Nov 1994 08:49:37 GMT";
-    
-    init_http_date_parser();
-    
-    for (i=0; fmt1[i]; i++) {
-        char buf[1024];
-        memcpy(buf, fmt1, strlen(fmt1)+1);
-        
-        buf[i] = 'X';
-        test_bad(buf, i);
+
+
+    /* for all patterns */
+    for (i=0; bads[i]; i++) {
+        const char *bad = bads[i];
+        size_t j;
+
+        /* First do a good one */
+        test_bad(bad, strlen(bad), 784111777);
+
+        /* for all mutations of the pattern */
+        for (j=0; bad[j]; j++) {
+            char buf[1024];
+            int err;
+
+            memcpy(buf, bad, strlen(bad)+1);
+            buf[j] = 'X';
+            
+            err = test_bad(buf, j, 784111777);
+            if (err)
+                return err;
+        }
+    }
+    return 0; /* success */
+}
+
+static int
+test_goods(void) {
+    char buf[1024];
+    static const time_t goods[] = {
+        0,
+        1,
+        0x02ebc98a1, // Sun, 06 Nov 1994 08:49:37 GMT
+        0x0386d437e,
+        0x0386d437f,
+        0x0386d4380,
+        0x0386d4381,
+        0x04b3eb7a5, //  Sat, 02 Jan 2010 03:04:05 GMT
+        0x07ffffffe, // - 2038-01-19 03:14:07 UTC (Y2038 after) */
+        0x07fffffff, // - 2038-01-19 03:14:07 UTC (Y2038 after) */
+        0x080000000, //"Tue, 19 Jan 2038 03:14:08 GMT",  0xFF, 0},
+        0x080000001, //"Tue, 19 Jan 2038 03:14:08 GMT",  0xFF, 0},
+        -1
+    };
+    size_t i;
+
+
+    /* RFC1123/IMF-time */
+    for (i=0; goods[i] != -1; i++) {
+        time_t good = goods[i];
+        struct tm *tm;
+        size_t length;
+
+        tm = gmtime(&good);
+        length = strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", tm);
+        if (length == 0) {
+            fprintf(stderr, "[-] strftime() error\n");
+            continue;
+        }
+
+        test_bad(buf, length, good);
     }
 
-    for (i=0; testcases[i].string; i++) {
-        test_differential(i);
+    /* RFC850 */
+    for (i=0; goods[i] != -1; i++) {
+        time_t good = goods[i];
+        struct tm *tm;
+        size_t length;
+
+        tm = gmtime(&good);
+        length = strftime(buf, sizeof(buf), "%A, %d-%b-%y %H:%M:%S GMT", tm);
+        if (length == 0) {
+            fprintf(stderr, "[-] strftime() error\n");
+            continue;
+        }
+
+        test_bad(buf, length, good);
     }
-    fprintf(stderr, "[+] done\n");
+
+    /* asctime() */
+    for (i=0; goods[i] != -1; i++) {
+        time_t good = goods[i];
+        struct tm *tm;
+        size_t length;
+        const char *buf2;
+        
+
+        tm = gmtime(&good);
+        buf2 = asctime(tm);
+        strcpy(buf, buf2);
+        
+        while (buf[0] && isspace(buf[strlen(buf)-1]&0xFF))
+            buf[strlen(buf)-1] = '\0'; /*strip trailing whitespace*/
+        
+
+        test_bad(buf, strlen(buf), good);
+    }
+
+
+    return 0; /* success */
+}
+
+/* For LightHTTPD */
+time_t log_epoch_secs;
+
+int main(int argc, char *argv[]) {
+    int i;
+    int errs = 0;
+    int test_count = 0;
+    
+    /* LightHTTPD init */
+    log_epoch_secs = time(0);
+
+    /* MinHTTPD init */
+    init_http_date_parser();
+
+    /*
+     * Loop through commands
+     */
+    for (i=1; i<argc; i++) {
+        const char *arg = argv[i];
+
+        if (strcmp("--bad", arg) == 0) {
+            errs += test_bads();
+            test_count++;
+        } else if (strcmp("--good", arg) == 0) {
+            errs += test_goods();
+            test_count++;
+        }
+    }
+
+    /* Make sure we executed at least one test, or else
+     * print help. */
+    if (test_count == 0) {
+        fprintf(stderr, "[-] no tests ran\n");
+        fprintf(stderr, "usage:\n date-test <test1> <test2>...\n");
+        fprintf(stderr, "where some tests are:\n");
+        fprintf(stderr, " --bad\n");
+        fprintf(stderr, " --good\n");
+    }
+
+    if (errs)
+        fprintf(stderr, "[-] %d errors\n", errs);
+    else
+        fprintf(stderr, "[+] success!\n");
+    return errs;
 }
 
