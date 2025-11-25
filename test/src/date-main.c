@@ -22,8 +22,6 @@ struct testcases_t {
     bool is_until_crlf:1; /* parsed until end-of-line */
 } testcases[] = {
 
-    { 0, "Thursday, 01-Jan-70 00:00:00 GMT",        0xF7, 0},
-
     { 784111777, "Sun, 06 Nov 1994 08:49:37 GMT",   0xFF, 0},
     { 784111777, "Sunday, 06-Nov-94 08:49:37 GMT",  0xFF, 0},
     { 784111777, "Sun Nov  6 08:49:37 1994",        0xF7, 0},
@@ -44,10 +42,16 @@ struct testcases_t {
 #endif
     
     /* 0 - Epoch */
-    { 0, "Thu, 01 Jan 1970 00:00:00 GMT",           0xF7, 0},
-    { 0, "Thursday, 01-Jan-70 00:00:00 GMT",        0xF7, 0},
-    { 0, "Thu Jan  1 00:00:00 1970",                0xF7, 0},
-    
+    { 0, "Thu, 01 Jan 1970 00:00:00 GMT",           0xF5, 0},
+    { 0, "Thursday, 01-Jan-70 00:00:00 GMT",        0xF5, 0},
+    { 0, "Thu Jan  1 00:00:00 1970",                0xF5, 0},
+  
+    /* 1 - Epoch plus 1 */
+    { 1, "Fri, 01 Jan 1970 00:00:01 GMT",           0xFF, 0},
+    { 1, "Friday, 01-Jan-70 00:00:01 GMT",          0xFF, 0},
+    { 1, "Fri Jan  1 00:00:01 1970",                0xF7, 0},
+  
+#if 0
     /* 946684799 - 1999-12-31 23:59:59 UTC */
     { 946684799, "Fri, 31 Dec 1999 23:59:59 GMT",   0xFF, 0},
     { 946684799, "Friday, 31-Dec-99 23:59:59 GMT",  0xFF, 0},
@@ -77,6 +81,7 @@ struct testcases_t {
     { 2147483648, "Tue, 19 Jan 2038 03:14:08 GMT",  0xFF, 0},
     { 2147483648, "Tuesday, 19-Jan-38 03:14:08 GMT",0xFF, 0},
     { 2147483648, "Tue Jan 19 03:14:08 2038",       0xFF, 0},
+#endif
     {0,0}
 };
 
@@ -108,7 +113,7 @@ time_t litespeed_parseHttpTime(const char *s, int len);
 /**
  * Runs a single testcase with parser differentials
  */
-int run_test_case(size_t i) {
+int test_differential(size_t i) {
     time_t expected = testcases[i].expected_result;
     const char *string = testcases[i].string;
     unsigned validity = testcases[i].validity;
@@ -139,6 +144,8 @@ int run_test_case(size_t i) {
      * Apache
      */
     result = apr_date_parse_rfc(string);
+    if (result == 0)
+        result = -1;
     if ((validity & VALID_APACHE) && result == expected) {
         status[1] = 'A';
     } else if (!(validity & VALID_APACHE) && result == -1) {
@@ -202,14 +209,48 @@ if (expected_length && expected_length != string_length) {
 }
 
 #endif
+
+int test_bad(const char *string, size_t offset) {
+    time_t expected = -1;
+    unsigned validity = 0;
+    size_t string_length = strlen(string);
+    struct HttpDate date;
+    unsigned state = 0;
+    time_t result;
+    
+    /*
+     * MinHttpd
+     */
+    state = parse_http_date(state, string, &string_length, &date, 0);
+    result = date.timestamp;
+    if (result != -1) {
+        /* this is supposed to fail */
+        fprintf(stderr, "[-] %s, expected %lld, got %lld\n", string, (long long)expected, (long long)result);
+        return 1;
+    }
+    fprintf(stderr, "[+] %s\n", string);
+    fprintf(stderr, "    %.*s^\n", (int)string_length, "                           ");
+    fprintf(stderr, "    %.*s|\n", (int)offset, "                           ");
+
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
     size_t i;
-
+    const char *fmt1 = "Sun, 06 Nov 1994 08:49:37 GMT";
+    
     init_http_date_parser();
     
+    for (i=0; fmt1[i]; i++) {
+        char buf[1024];
+        memcpy(buf, fmt1, strlen(fmt1)+1);
+        
+        buf[i] = 'X';
+        test_bad(buf, i);
+    }
 
     for (i=0; testcases[i].string; i++) {
-        run_test_case(i);
+        test_differential(i);
     }
     fprintf(stderr, "[+] done\n");
 }

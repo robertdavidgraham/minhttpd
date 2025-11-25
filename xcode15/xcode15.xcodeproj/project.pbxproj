@@ -35,7 +35,6 @@
 		11FDB8002ED3BCEC006877CC /* util-ahocorasick.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "util-ahocorasick.c"; path = "../../src/util-ahocorasick.c"; sourceTree = "<group>"; };
 		11FDB8032ED3BCFF006877CC /* date-main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "date-main.c"; path = "../../test/src/date-main.c"; sourceTree = "<group>"; };
 		11FDB8052ED3D4DE006877CC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../../README.md; sourceTree = "<group>"; };
-		11FDB8062ED3DABA006877CC /* 001-parse-date.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; name = "001-parse-date.md"; path = "../../design/001-parse-date.md"; sourceTree = "<group>"; };
 		11FDB8072ED4E3F7006877CC /* date-apache.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "date-apache.c"; path = "../../test/src/date-apache.c"; sourceTree = "<group>"; };
 		11FDB8092ED4E40E006877CC /* date-nginx.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "date-nginx.c"; path = "../../test/src/date-nginx.c"; sourceTree = "<group>"; };
 		11FDB80B2ED4FFDC006877CC /* date-litespeed.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = "date-litespeed.c"; path = "../../test/src/date-litespeed.c"; sourceTree = "<group>"; };
@@ -74,7 +73,6 @@
 				11FDB80B2ED4FFDC006877CC /* date-litespeed.c */,
 				11FDB8092ED4E40E006877CC /* date-nginx.c */,
 				11FDB8072ED4E3F7006877CC /* date-apache.c */,
-				11FDB8062ED3DABA006877CC /* 001-parse-date.md */,
 				11FDB8052ED3D4DE006877CC /* README.md */,
 				11FDB8032ED3BCFF006877CC /* date-main.c */,
 				11FDB7FF2ED3BCEC006877CC /* parse-http-date.c */,

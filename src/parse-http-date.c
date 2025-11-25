@@ -705,7 +705,8 @@ parse_http_date(    unsigned state,
         if (state == DATE_VALID || state == DATE_INVALID) {
             if (state == DATE_INVALID)
                 result->timestamp = -1;
-            i++;
+            if (state == DATE_VALID)
+                i++;
             break;
         }
     }

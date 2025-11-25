@@ -1,3 +1,9 @@
+/*
+    This file was extracted from Apache, from the apr and apr-util projects.
+    It's been lightly modified in order to compile independently of the
+    rest of the Apache project.
+ */
+
 /* Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -24,17 +30,6 @@
  *     and several hundred variations of invalid date strings.
  * 
  */
-
-//#include "apr.h"
-//#include "apr_lib.h"
-
-#define APR_WANT_STRFUNC
-//#include "apr_want.h"
-
-#if APR_HAVE_STDLIB_H
-//#include <stdlib.h>
-#endif
-
 #include <ctype.h>
 #include <time.h>
 #include <string.h>
@@ -55,7 +50,7 @@
 #define apr_isxdigit(c) isxdigit((c)&0xFF)
 typedef time_t apr_time_t;
 typedef int32_t apr_int32_t;
-#define APR_DATE_BAD ((apr_time_t)-1)
+#define APR_DATE_BAD ((apr_time_t)0)
 
 
 typedef struct apr_time_exp_t {

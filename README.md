@@ -15,6 +15,7 @@ A list of concepts its trying to teach:
 * state-machine parsers
 * proper SSL support
 * secure URL parsing
+* secure HTTP parsing to avoid pipelining/smuggling
 * secure access to static files
 * security hardening (containerizing)
 * secure timeouts for slowloris type attacks
@@ -23,7 +24,15 @@ A list of concepts its trying to teach:
 ## Status
 
 Currently [2025-12-01] the project only contains a state-machine parser
-for HTTP `Date:` fields.
+for HTTP `Date:` fields. This parser is finished, and I'm now creating
+a test corpus to test it.
+
+I'm especially looking at *parser differentials*,
+adding to the test suite the `Date:` parsers from popular web servers like 
+Apache, Nginx, and LiteSpeed. In general, the other webservers are very
+permissive, allowing timestamps that go far outside the spec. Conversely,
+LiteSpeed does not support one of the three standard formats allowed
+in the `Date:` field, the so-called `asctime()` format.
 
 ## Layout of the project
 
