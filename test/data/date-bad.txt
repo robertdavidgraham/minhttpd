@@ -1,0 +1,106 @@
+[.A....] 0x0331c18d4 Tue, 4 Mar 97 12:43 GMT
+[.A.-..] 0x042c56281 Fri,  1 Jul 2005 11:34:25 -0400
+[....FS] 0x02edd8e21 Thu, 31 Nov 1994 08:49:37 GMT
+[....F.] 0x02ededfa1 Fri, 32 Nov 1994 08:49:37 GMT
+[....F.] 0x02ebd79a1 Sun, 06 Nov 1994 24:49:37 GMT
+[....-.] 0x02ebc98dd Sun, 06 Nov 1994 08:60:37 GMT
+[.A..FS] 0x02ebc98b8 Sun, 06 Nov 1994 08:49:60 GMT
+[.A..F.] 0x02ebc98b9 Sun, 06 Nov 1994 08:49:61 GMT
+[....FS] 0x02edd8e21 Thursday, 31-Nov-94 08:49:37 GMT
+[....F.] 0x02ededfa1 Tuesday, 32-Nov-94 08:49:37 GMT
+[....F.] 0x02ebd79a1 Sunday, 06-Nov-94 24:49:37 GMT
+[....-.] 0x02ebc98dd Sunday, 06-Nov-94 08:60:37 GMT
+[.A..FS] 0x02ebc98b8 Sunday, 06-Nov-94 08:49:60 GMT
+[.A..F.] 0x02ebc98b9 Sunday, 06-Nov-94 08:49:61 GMT
+[....FS] 0x02edd8e21 Thu Nov 31 08:49:37 1994
+[....F.] 0x02ededfa1 Tue Nov 32 08:49:37 1994
+[....F.] 0x02ebd79a1 Sun Nov  6 24:49:37 1994
+[....-.] 0x02ebc98dd Sun Nov  6 08:60:37 1994
+[.A..FS] 0x02ebc98b8 Sun Nov  6 08:49:60 1994
+[.A..F.] 0x02ebc98b9 Sun Nov  6 08:49:61 1994
+[.ANL..] 0x02ebc98a1 Xun, 06 Nov 1994 08:49:37 GMT
+[.ANL..] 0x02ebc98a1 SXn, 06 Nov 1994 08:49:37 GMT
+[.ANL..] 0x02ebc98a1 SuX, 06 Nov 1994 08:49:37 GMT
+[.A....] 0x02ebc98a1 SunX 06 Nov 1994 08:49:37 GMT
+[......] 0x02ebc98a1 Sun,X06 Nov 1994 08:49:37 GMT
+[......] 0x02ebc98a1 Sun, X6 Nov 1994 08:49:37 GMT
+[......] 0x02ebc98a1 Sun, 0X Nov 1994 08:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06XNov 1994 08:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Xov 1994 08:49:37 GMT
+[..NL..] 0x02ebc98a1 Sun, 06 NXv 1994 08:49:37 GMT
+[..NL..] 0x02ebc98a1 Sun, 06 NoX 1994 08:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 NovX1994 08:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov X994 08:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 1X94 08:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 19X4 08:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 199X 08:49:37 GMT
+[...L..] 0x02ebc98a1 Sun, 06 Nov 1994X08:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 1994 X8:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 1994 0X:49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 1994 08X49:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 1994 08:X9:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 1994 08:4X:37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 1994 08:49X37 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 1994 08:49:X7 GMT
+[......] 0x02ebc98a1 Sun, 06 Nov 1994 08:49:3X GMT
+[..N...] 0x02ebc98a1 Sun, 06 Nov 1994 08:49:37XGMT
+[.ANL..] 0x02ebc98a1 Sun, 06 Nov 1994 08:49:37 XMT
+[.ANL..] 0x02ebc98a1 Sun, 06 Nov 1994 08:49:37 GXT
+[.ANL..] 0x02ebc98a1 Sun, 06 Nov 1994 08:49:37 GMX
+[.ANL..] 0x02ebc98a1 Sun, 06 Nov 1994 08:49:37 GMTX
+[.ANL..] 0x02ebc98a1 Xunday, 06-Nov-94 08:49:37 GMT
+[.ANL..] 0x02ebc98a1 SXnday, 06-Nov-94 08:49:37 GMT
+[.ANL..] 0x02ebc98a1 SuXday, 06-Nov-94 08:49:37 GMT
+[.ANLF.] 0x02ebc98a1 SunXay, 06-Nov-94 08:49:37 GMT
+[.ANLF.] 0x02ebc98a1 SundXy, 06-Nov-94 08:49:37 GMT
+[.ANLF.] 0x02ebc98a1 SundaX, 06-Nov-94 08:49:37 GMT
+[.A....] 0x02ebc98a1 SundayX 06-Nov-94 08:49:37 GMT
+[......] 0x02ebc98a1 Sunday,X06-Nov-94 08:49:37 GMT
+[......] 0x02ebc98a1 Sunday, X6-Nov-94 08:49:37 GMT
+[......] 0x02ebc98a1 Sunday, 0X-Nov-94 08:49:37 GMT
+[......] 0x02ebc98a1 Sunday, 06XNov-94 08:49:37 GMT
+[......] 0x02ebc98a1 Sunday, 06-Xov-94 08:49:37 GMT
+[..NL..] 0x02ebc98a1 Sunday, 06-NXv-94 08:49:37 GMT
+[..NL..] 0x02ebc98a1 Sunday, 06-NoX-94 08:49:37 GMT
+[......] 0x02ebc98a1 Sunday, 06-NovX94 08:49:37 GMT
+[......] 0x02ebc98a1 Sunday, 06-Nov-X4 08:49:37 GMT
+[...-..] 0x02ebc98a1 Sunday, 06-Nov-9X 08:49:37 GMT
+[...L..] 0x02ebc98a1 Sunday, 06-Nov-94X08:49:37 GMT
+[......] 0x02ebc98a1 Sunday, 06-Nov-94 X8:49:37 GMT
+[......] 0x02ebc98a1 Sunday, 06-Nov-94 0X:49:37 GMT
+[......] 0x02ebc98a1 Sunday, 06-Nov-94 08X49:37 GMT
+[......] 0x02ebc98a1 Sunday, 06-Nov-94 08:X9:37 GMT
+[......] 0x02ebc98a1 Sunday, 06-Nov-94 08:4X:37 GMT
+[......] 0x02ebc98a1 Sunday, 06-Nov-94 08:49X37 GMT
+[......] 0x02ebc98a1 Sunday, 06-Nov-94 08:49:X7 GMT
+[......] 0x02ebc98a1 Sunday, 06-Nov-94 08:49:3X GMT
+[..N...] 0x02ebc98a1 Sunday, 06-Nov-94 08:49:37XGMT
+[.ANL..] 0x02ebc98a1 Sunday, 06-Nov-94 08:49:37 XMT
+[.ANL..] 0x02ebc98a1 Sunday, 06-Nov-94 08:49:37 GXT
+[.ANL..] 0x02ebc98a1 Sunday, 06-Nov-94 08:49:37 GMX
+[.ANLF.] 0x02ebc98a1 Sunday, 06-Nov-94 08:49:37 GMTX
+[.AN...] 0x02ebc98a1 Xun Nov  6 08:49:37 1994
+[.AN...] 0x02ebc98a1 SXn Nov  6 08:49:37 1994
+[.AN...] 0x02ebc98a1 SuX Nov  6 08:49:37 1994
+[......] 0x02ebc98a1 SunXNov  6 08:49:37 1994
+[......] 0x02ebc98a1 Sun Xov  6 08:49:37 1994
+[..N...] 0x02ebc98a1 Sun NXv  6 08:49:37 1994
+[..N...] 0x02ebc98a1 Sun NoX  6 08:49:37 1994
+[..N...] 0x02ebc98a1 Sun NovX 6 08:49:37 1994
+[......] 0x02ebc98a1 Sun Nov X6 08:49:37 1994
+[......] 0x02ebc98a1 Sun Nov  X 08:49:37 1994
+[......] 0x02ebc98a1 Sun Nov  6X08:49:37 1994
+[......] 0x02ebc98a1 Sun Nov  6 X8:49:37 1994
+[......] 0x02ebc98a1 Sun Nov  6 0X:49:37 1994
+[......] 0x02ebc98a1 Sun Nov  6 08X49:37 1994
+[......] 0x02ebc98a1 Sun Nov  6 08:X9:37 1994
+[......] 0x02ebc98a1 Sun Nov  6 08:4X:37 1994
+[......] 0x02ebc98a1 Sun Nov  6 08:49X37 1994
+[......] 0x02ebc98a1 Sun Nov  6 08:49:X7 1994
+[......] 0x02ebc98a1 Sun Nov  6 08:49:3X 1994
+[......] 0x02ebc98a1 Sun Nov  6 08:49:37X1994
+[...-..] 0x02ebc98a1 Sun Nov  6 08:49:37 X994
+[...-..] 0x02ebc98a1 Sun Nov  6 08:49:37 1X94
+[...-..] 0x02ebc98a1 Sun Nov  6 08:49:37 19X4
+[......] 0x02ebc98a1 Sun Nov  6 08:49:37 199X
+[.ANLF.] 0x02ebc98a1 Sun Nov  6 08:49:37 1994X

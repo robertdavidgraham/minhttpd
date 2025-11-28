@@ -1,3 +1,12 @@
+/*
+    Test program for parsing "Date:" field.
+ 
+ This is a simple test program:
+    --good - tests several good strings, getting the right result
+    --bad - verifies that rejects badly formatted strings
+    --date <string> - prints output from a single input string on command-line
+    <filename> - reads from a file, for fuzzing
+ */
 #define _CRT_SECURE_NO_WARNINGS
 #include "../../src/parse-http-date.h"
 #include <string.h>
@@ -5,6 +14,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <ctype.h>
+#include <stdlib.h>
 
 /* For older compilers that don't define these */
 #ifndef __bool_true_false_are_defined
@@ -13,103 +23,73 @@
 #define false 0
 #endif
 
-#define VALID_MINHTTPD  0x0001
-#define VALID_APACHE    0x0002
-#define VALID_NGINX     0x0004
-#define VALID_LITESPD   0x0008
 
 
 struct testcases_t {
     time_t expected_result;
     const char *string;
-    unsigned validity;
-    bool is_until_crlf:1; /* parsed until end-of-line */
 } testcases[] = {
 
-    { 784111777, "Sun, 06 Nov 1994 08:49:37 GMT",   0xFF, 0},
-    { 784111777, "Sunday, 06-Nov-94 08:49:37 GMT",  0xFF, 0},
-    { 784111777, "Sun Nov  6 08:49:37 1994",        0xF7, 0},
-    { 784111777, "Sun Nov 06 08:49:37 1994",        0xF7, 0},
+    { 784111777, "Sun, 06 Nov 1994 08:49:37 GMT"},
+    { 784111777, "Sunday, 06-Nov-94 08:49:37 GMT"},
+    { 784111777, "Sun Nov  6 08:49:37 1994"},
+    { 784111777, "Sun Nov 06 08:49:37 1994"},
 
-    /* Some tests from Apache for incorrect formats. They should
-     * fail our parser*/
-#if 0
-    { 793946984, "Mon, 27 Feb 1995 20:49:44 -0800",   2|4, 0}, //"Tue, 28 Feb 1995 04:49:44 GMT"
-    {1120232065, "Fri,  1 Jul 2005 11:34:25 -0400",   2, 0}, //"Fri, 01 Jul 2005 15:34:25 GMT"
-    { 793946984, "Monday, 27-Feb-95 20:49:44 -0800",  2, 0}, //"Tue, 28 Feb 1995 04:49:44 GMT"
-    { 857472232, "Tue, 4 Mar 1997 12:43:52 +0200",    2, 0}, //"Tue, 04 Mar 1997 10:43:52 GMT"
-    { 793946984, "Mon, 27 Feb 95 20:49:44 -0800",     2, 0}, //"Tue, 28 Feb 1995 04:49:44 GMT"
-    { 857472232, "Tue,  4 Mar 97 12:43:52 +0200",     2, 0}, //"Tue, 04 Mar 1997 10:43:52 GMT"
-    { 857472232, "Tue, 4 Mar 97 12:43:52 +0200",      2, 0}, //"Tue, 04 Mar 1997 10:43:52 GMT"
-    { 793918140, "Mon, 27 Feb 95 20:49 GMT",          2, 0}, //"Mon, 27 Feb 1995 20:49:00 GMT"
-    { 857479380, "Tue, 4 Mar 97 12:43 GMT",           2, 0}, //"Tue, 04 Mar 1997 12:43:00 GMT"
-#endif
+
     
-    /* 0 - Epoch */
-    { 0, "Thu, 01 Jan 1970 00:00:00 GMT",           0xF5, 0},
-    { 0, "Thursday, 01-Jan-70 00:00:00 GMT",        0xF5, 0},
-    { 0, "Thu Jan  1 00:00:00 1970",                0xF5, 0},
-  
-    /* 1 - Epoch plus 1 */
-    { 1, "Fri, 01 Jan 1970 00:00:01 GMT",           0xFF, 0},
-    { 1, "Friday, 01-Jan-70 00:00:01 GMT",          0xFF, 0},
-    { 1, "Fri Jan  1 00:00:01 1970",                0xF7, 0},
   
 #if 0
     /* 946684799 - 1999-12-31 23:59:59 UTC */
-    { 946684799, "Fri, 31 Dec 1999 23:59:59 GMT",   0xFF, 0},
-    { 946684799, "Friday, 31-Dec-99 23:59:59 GMT",  0xFF, 0},
-    { 946684799, "Fri Dec 31 23:59:59 1999",        0xFF, 0},
+    { 946684799, "Fri, 31 Dec 1999 23:59:59 GMT"},
+    { 946684799, "Friday, 31-Dec-99 23:59:59 GMT"},
+    { 946684799, "Fri Dec 31 23:59:59 1999"},
     
     /* 951827696 - 2000-02-29 12:34:56 UTC */
-    { 951827696, "Tue, 29 Feb 2000 12:34:56 GMT",   0xFF, 0},
-    { 951827696, "Tuesday, 29-Feb-00 12:34:56 GMT", 0xFF, 0},
-    { 951827696, "Tue Feb 29 12:34:56 2000",        0xFF, 0},
+    { 951827696, "Tue, 29 Feb 2000 12:34:56 GMT"},
+    { 951827696, "Tuesday, 29-Feb-00 12:34:56 GMT"},
+    { 951827696, "Tue Feb 29 12:34:56 2000"},
     
     /* 1330559999 - 2012-02-29 23:59:59 UTC */
-    { 1330559999, "Wed, 29 Feb 2012 23:59:59 GMT",  0xFF, 0},
-    { 1330559999, "Wednesday, 29-Feb-12 23:59:59 GMT",0xFF,0},
-    { 1330559999, "Wed Feb 29 23:59:59 2012",       0xFF, 0},
+    { 1330559999, "Wed, 29 Feb 2012 23:59:59 GMT"},
+    { 1330559999, "Wednesday, 29-Feb-12 23:59:59 GMT"},
+    { 1330559999, "Wed Feb 29 23:59:59 2012"},
     
     /* 1262401445 - 2010-01-02 03:04:05 UTC */
-    { 1262401445, "Sat, 02 Jan 2010 03:04:05 GMT",  0xFF, 0},
-    { 1262401445, "Saturday, 02-Jan-10 03:04:05 GMT",0xFF,0},
-    { 1262401445, "Sat Jan  2 03:04:05 2010",       0xFF, 0},
+    { 1262401445, "Sat, 02 Jan 2010 03:04:05 GMT"},
+    { 1262401445, "Saturday, 02-Jan-10 03:04:05 GMT"},
+    { 1262401445, "Sat Jan  2 03:04:05 2010"},
     
     /* 2147483647 - 2038-01-19 03:14:07 UTC (Y2038 before) */
-    { 2147483647, "Tue, 19 Jan 2038 03:14:07 GMT",  0xFF, 0},
-    { 2147483647, "Tuesday, 19-Jan-38 03:14:07 GMT",0xFF, 0},
-    { 2147483647, "Tue Jan 19 03:14:07 2038",       0xFF, 0},
+    { 2147483647, "Tue, 19 Jan 2038 03:14:07 GMT"},
+    { 2147483647, "Tuesday, 19-Jan-38 03:14:07 GMT"},
+    { 2147483647, "Tue Jan 19 03:14:07 2038"},
     
     /* 2147483647 - 2038-01-19 03:14:07 UTC (Y2038 after) */
-    { 2147483648, "Tue, 19 Jan 2038 03:14:08 GMT",  0xFF, 0},
-    { 2147483648, "Tuesday, 19-Jan-38 03:14:08 GMT",0xFF, 0},
-    { 2147483648, "Tue Jan 19 03:14:08 2038",       0xFF, 0},
+    { 2147483648, "Tue, 19 Jan 2038 03:14:08 GMT"},
+    { 2147483648, "Tuesday, 19-Jan-38 03:14:08 GMT"},
+    { 2147483648, "Tue Jan 19 03:14:08 2038"},
 #endif
     {0,0}
 };
 
 struct testcases_t crlf_testcases[] = {
-    {784111777, "Sun, 06 Nov 1994 08:49:37 GMT\r\n*", 1},
-    {784111777, "Sunday, 06-Nov-94 08:49:37 GMT\r\n*", 1},
-    {784111777, "Sun Nov  6 08:49:37 1994\r\n*", 1},
-    {784111777, "Sun Nov 06 08:49:37 1994\r\n*", 1},
+    {784111777, "Sun, 06 Nov 1994 08:49:37 GMT\r\n*"},
+    {784111777, "Sunday, 06-Nov-94 08:49:37 GMT\r\n*"},
+    {784111777, "Sun Nov  6 08:49:37 1994\r\n*"},
+    {784111777, "Sun Nov 06 08:49:37 1994\r\n*"},
 
-    {784111777, "Sun, 06 Nov 1994 08:49:37 GMT \r\n*", 1},
-    {784111777, "Sunday, 06-Nov-94 08:49:37 GMT  \r\n*", 1},
-    {784111777, "Sun Nov  6 08:49:37 1994 \t \r\n*", 1},
-    {784111777, "Sun Nov 06 08:49:37 1994 \t\t\r\n*", 1},
+    {784111777, "Sun, 06 Nov 1994 08:49:37 GMT \r\n*"},
+    {784111777, "Sunday, 06-Nov-94 08:49:37 GMT  \r\n*"},
+    {784111777, "Sun Nov  6 08:49:37 1994 \t \r\n*"},
+    {784111777, "Sun Nov 06 08:49:37 1994 \t\t\r\n*"},
 
-    {784111777, "Sun, 06 Nov 1994 08:49:37 GMT", 0},
-    {784111777, "Sunday, 06-Nov-94 08:49:37 GMT", 0},
-    {784111777, "Sun Nov  6 08:49:37 1994", 0},
-    {784111777, "Sun Nov 06 08:49:37 1994", 0},
-
-
-    {784111777, "Sun, 31 Nov 1994 08:49:37 GMT"},
     {0,0}
 };
 
+/*
+ * These are defined in files like date-apache.c, date-nginx.c,
+ * and so forth.
+ */
 time_t apr_date_parse_rfc(const char *date);
 time_t ngx_http_parse_time(const char *value, size_t len);
 time_t litespeed_parseHttpTime(const char *s, int len);
@@ -117,17 +97,18 @@ time_t lighthttp_parse_date(const char *buf, uint32_t len);
 time_t simple_parse_date(const char *s);
 
 
-int test1(const char *string, size_t length, time_t expected, unsigned validity, char *status) {
-    size_t string_length = strlen(string);
-    struct HttpDate date;
-    unsigned state = 0;
+/**
+ * This tests the string input across many code bases to look for "parser differentials",
+ * where different web servers may treat this field differently.
+ */
+int test1(const char *string, size_t length, time_t expected, char *status) {
+    struct HttpDate scratch;
     time_t result;
 
     /*
      * MinHttpd
      */
-    state = parse_http_date(state, string, &string_length, &date, 0);
-    result = date.timestamp;
+    result = parse_http_date(string, length);
     if (result == expected && expected != -1) {
         status[0] = 'M';
     } else if (result == -1) {
@@ -153,7 +134,7 @@ int test1(const char *string, size_t length, time_t expected, unsigned validity,
     /*
      * Nginx
      */
-    result = ngx_http_parse_time(string, string_length);
+    result = ngx_http_parse_time(string, length);
     if (result == expected && expected != -1) {
         status[2] = 'N';
     } else if (result == -1) {
@@ -165,7 +146,7 @@ int test1(const char *string, size_t length, time_t expected, unsigned validity,
     /*
      * LiteSpeed (OpenLiteSpeed)
      */
-    result = litespeed_parseHttpTime(string, (int)string_length);
+    result = litespeed_parseHttpTime(string, (int)length);
     if (result == 0)
         result = -1;
     if (result == expected && expected != -1) {
@@ -179,7 +160,7 @@ int test1(const char *string, size_t length, time_t expected, unsigned validity,
     /*
      * LightHTTPD (Fly Light)
      */
-    result = lighthttp_parse_date(string, (unsigned)string_length);
+    result = lighthttp_parse_date(string, (unsigned)length);
     if (result == 0)
         result = -1;
     if (result == expected && expected != -1) {
@@ -210,130 +191,13 @@ int test1(const char *string, size_t length, time_t expected, unsigned validity,
 
 
 
-/**
- * Runs a single testcase with parser differentials
- */
-int test_differential(size_t i) {
-    time_t expected = testcases[i].expected_result;
-    const char *string = testcases[i].string;
-    unsigned validity = testcases[i].validity;
-    size_t string_length = strlen(string);
-    struct HttpDate date;
-    unsigned state = 0;
-    time_t result;
-    char status[16] = ".....";
-
-    /*
-     * MinHttpd
-     */
-    state = parse_http_date(state, string, &string_length, &date, 0);
-    result = date.timestamp;
-    if ((validity & VALID_MINHTTPD) && result == expected) {
-        status[0] = 'M';
-    } else if (!(validity & VALID_MINHTTPD) && result == -1) {
-        status[0] = 'm';
-    } else {
-        status[0] = '-';
-        if (!(validity & VALID_MINHTTPD))
-            expected = -1;
-        fprintf(stderr, "[-] %3d:M: %s, expected %lld, got %lld\n", (int)i, string, (long long)expected, (long long)result);
-        return 1;
-    }
-
-    /*
-     * Apache
-     */
-    result = apr_date_parse_rfc(string);
-    if (result == 0)
-        result = -1;
-    if ((validity & VALID_APACHE) && result == expected) {
-        status[1] = 'A';
-    } else if (!(validity & VALID_APACHE) && result == -1) {
-        status[1] = 'a';
-    } else {
-        status[1] = '-';
-        /*if (!(validity & VALID_APACHE))
-            expected = -1;
-        fprintf(stderr, "[-] %3d:A: %s, expected %llu, got %llu\n", (int)i, string, (long long)expected, (long long)result);
-        return 1; */
-    }
-
-    /*
-     * Nginx
-     */
-    result = ngx_http_parse_time(string, string_length);
-    if ((validity & VALID_NGINX) && result == expected) {
-        status[2] = 'N';
-    } else if (!(validity & VALID_NGINX) && result == -1) {
-        status[2] = 'n';
-    } else {
-        status[2] = '-';
-        /*if (!(validity & VALID_NGINX))
-            expected = -1;
-        fprintf(stderr, "[-] %3d:N: %s, expected %llu, got %llu\n", (int)i, string, (long long)expected, (long long)result);
-        return 1; */
-    }
-
-    /*
-     * LiteSpeed (OpenLiteSpeed)
-     */
-    result = litespeed_parseHttpTime(string, (int)string_length);
-    if (result == 0)
-        result = -1;
-    if ((validity & VALID_LITESPD) && result == expected) {
-        status[3] = 'L';
-    } else if (!(validity & VALID_LITESPD) && result == -1) {
-        status[3] = 'l';
-    } else {
-        status[3] = '-';
-        /*if (!(validity & VALID_LITESPD))
-            expected = -1;
-        fprintf(stderr, "[-] %3d:L: %s, expected %llu, got %llu\n", (int)i, string, (long long)expected, (long long)result);
-        return 1;*/
-    }
-
-
-    printf("[%s] %s\n", status, string);
-    
-    return 0;
-}
-
-#if 0
-/* Test we've processed all the data that we should've */
-if (date.is_until_crlf) {
-    expected_length = string_length - 1;
-}
-if (expected_length && expected_length != string_length) {
-    fprintf(stderr, "[-] %s: expected length = %d, found length = %d\n",
-        string, (int)expected_length, (int)string_length);
-}
-
-#endif
-
-int test_bad(const char *string, size_t offset, time_t expected) {
+int test_bad(const char *string, time_t expected) {
     size_t string_length = strlen(string);
     size_t original_length = string_length;
-    struct HttpDate date;
-    unsigned state = 0;
-    time_t result;
     char status[16];
-    
-    /*
-     * MinHttpd
-     */
-#if 0
-    state = parse_http_date(state, string, &string_length, &date, 0);
-    result = date.timestamp;
-    if (result != -1 && expected != result) {
-        /* this is supposed to fail */
-        fprintf(stderr, "[-] %s, expected %lld, got %lld\n", string, (long long)expected, (long long)result);
-        return 1;
-    }
-    /*if (result == -1 && string_length < original_length)
-        string[string_length] = '*';*/
-#endif
 
-    test1(string, original_length, expected, 0, status);
+
+    test1(string, original_length, expected, status);
     fprintf(stdout, "[%s] 0x%09llx %s\n", status, (long long)expected, string);
 
     return 0;
@@ -351,34 +215,92 @@ int test_bad(const char *string, size_t offset, time_t expected) {
  */
 static int
 test_bads(void) {
-    static const char *bads[] = {
-        "Sun, 06 Nov 1994 08:49:37 GMT\0\0\0\0",
-        "Sunday, 06-Nov-94 08:49:37 GMT",
-        "Sun Nov  6 08:49:37 1994",
+    /* These are bad strings that others might accept that we
+     * reject. Specifically, some are from the Apache test
+     * cases, where they accept timezones unlike everyone else */
+    static const struct testcases_t bads[] = {
+        {857479380,                 "Tue, 4 Mar 97 12:43 GMT"},
+        {1120232065,                "Fri,  1 Jul 2005 11:34:25 -0400"},
+        {0,0}
+    };
+
+    /* These test when integers go out of bounds, like 31 days for
+     * November, a month that has only 30 days. Of particular interest
+     * is testing the leap-second that can be 60. */
+    static const struct testcases_t badnums[] = {
+        {784111777 + 25*24*60*60,   "Thu, 31 Nov 1994 08:49:37 GMT"},
+        {784111777 + 26*24*60*60,   "Fri, 32 Nov 1994 08:49:37 GMT"},
+        {784111777 + 16*60*60,      "Sun, 06 Nov 1994 24:49:37 GMT"},
+        {784111777 + 60,            "Sun, 06 Nov 1994 08:60:37 GMT"},
+        {784111777 + 23,            "Sun, 06 Nov 1994 08:49:60 GMT"},
+        {784111777 + 24,            "Sun, 06 Nov 1994 08:49:61 GMT"},
+        {784111777 + 25*24*60*60,   "Thursday, 31-Nov-94 08:49:37 GMT"},
+        {784111777 + 26*24*60*60,   "Tuesday, 32-Nov-94 08:49:37 GMT"},
+        {784111777 + 16*60*60,      "Sunday, 06-Nov-94 24:49:37 GMT"},
+        {784111777 + 60,            "Sunday, 06-Nov-94 08:60:37 GMT"},
+        {784111777 + 23,            "Sunday, 06-Nov-94 08:49:60 GMT"},
+        {784111777 + 24,            "Sunday, 06-Nov-94 08:49:61 GMT"},
+        {784111777 + 25*24*60*60,   "Thu Nov 31 08:49:37 1994"},
+        {784111777 + 26*24*60*60,   "Tue Nov 32 08:49:37 1994"},
+        {784111777 + 16*60*60,      "Sun Nov  6 24:49:37 1994"},
+        {784111777 + 60,            "Sun Nov  6 08:60:37 1994"},
+        {784111777 + 23,            "Sun Nov  6 08:49:60 1994"},
+        {784111777 + 24,            "Sun Nov  6 08:49:61 1994"},
+        {0,0}
+    };
+    
+    /* In these days, we run through all the characters and add
+     * replace with an X, verifying we reject a bad characnter. */
+    static const char *badchars[] = {
+        "Sun, 06 Nov 1994 08:49:37 GMT\0\0",
+        "Sunday, 06-Nov-94 08:49:37 GMT\0\0",
+        "Sun Nov  6 08:49:37 1994\0\0",
         0
     };
     size_t i;
+    char status[16];
 
+    /* 
+     * Run through all known bad strings
+     */
+    for (i=0; bads[i].string; i++) {
+        const char *string = bads[i].string;
+        time_t expected = bads[i].expected_result;
+        test1(string, strlen(string), expected, status);
+        fprintf(stdout, "[%s] 0x%09llx %s\n",
+                status, (long long)expected, string);
+    }
 
-    /* for all patterns */
-    for (i=0; bads[i]; i++) {
-        const char *bad = bads[i];
+    /* 
+     * Run through all bad numbers
+     */
+    for (i=0; badnums[i].string; i++) {
+        const char *string = badnums[i].string;
+        time_t expected = badnums[i].expected_result;
+        test1(string, strlen(string), expected, status);
+        fprintf(stdout, "[%s] 0x%09llx %s\n",
+                status, (long long)expected, string);
+    }
+
+    /* 
+     * Do the bad character tests
+     * for all patterns
+     */
+    for (i=0; badchars[i]; i++) {
+        const char *bad = badchars[i];
         size_t j;
-
-        /* First do a good one */
-        //test_bad(bad, strlen(bad), 784111777);
+        static const time_t expected = 784111777;
 
         /* for all mutations of the pattern */
-        for (j=0; bad[j]; j++) {
-            char buf[1024];
-            int err;
+        for (j=0; j<strlen(badchars[i])+1; j++) {
+            char string[1024];
 
-            memcpy(buf, bad, strlen(bad)+1);
-            buf[j] = 'X';
+            memcpy(string, bad, strlen(bad)+2);
+            string[j] = 'X';
             
-            err = test_bad(buf, j, 784111777);
-            if (err)
-                return err;
+            test1(string, strlen(string), expected, status);
+            fprintf(stdout, "[%s] 0x%09llx %s\n",
+                    status, (long long)expected, string);
         }
     }
     return 0; /* success */
@@ -403,9 +325,24 @@ test_goods(void) {
         0x0f48656ff, /* Thu Dec 31 23:59:59 2099 */
         0x0f4865700,
         0x0f4865701,
+        0x0f4d376c0,
+        0x0f4d4c840, 
         -1
     };
+    static const struct testcases_t others[] = {
+        {0x58684680, "Sat, 31 Dec 2016 23:59:60 GMT"},
+        {0,0}
+    };
     size_t i;
+
+    for (i=0; others[i].string; i++) {
+        const char *bad = others[i].string;
+        time_t expected = others[i].expected_result;
+        int err;
+        err = test_bad(bad, expected);
+        if (err)
+            return err;
+    }
 
 
     /* RFC1123/IMF-time */
@@ -422,7 +359,7 @@ test_goods(void) {
             continue;
         }
 
-        test1(buf, length, expected, 1, status);
+        test1(buf, length, expected, status);
         fprintf(stdout, "[%s] 0x%09llx %s\n", status, (long long)expected, buf);
 
     }
@@ -440,14 +377,13 @@ test_goods(void) {
             continue;
         }
 
-        test_bad(buf, length, good);
+        test_bad(buf, good);
     }
 
     /* asctime() */
     for (i=0; goods[i] != -1; i++) {
         time_t good = goods[i];
         struct tm *tm;
-        size_t length;
         const char *buf2;
         
 
@@ -459,22 +395,97 @@ test_goods(void) {
             buf[strlen(buf)-1] = '\0'; /*strip trailing whitespace*/
         
 
-        test_bad(buf, strlen(buf), good);
+        test_bad(buf, good);
     }
 
 
     return 0; /* success */
 }
 
+/**
+ * This runs through the contents of a file that should be in the same format
+ * as the output this program produces. On input, it skips the "status" column
+ * and reads the "expected" column.
+ *
+ * The intent is that regression tests then simply
+ */
+static int test_file(const char *filename) {
+    char line[4096];
+    FILE *fp;
+    
+    fp = fopen(filename, "rb");
+    if (fp == NULL) {
+        perror(filename);
+        return 1;
+    }
+    
+    while (fgets(line, sizeof(line), fp)) {
+        time_t expected;
+
+        /* remove trailing whitespace */
+        while (line[0] && isspace(line[strlen(line)-1]))
+            line[strlen(line)-1] = '\0'; /* trim trailing whitespace */
+
+        /* skip comments */
+        if (line[0] == '#' || line[0] == ';' || line[0] == '/') {
+            printf("%s\n", line);
+            continue;
+        }
+        
+        /* skip empty lines */
+        if (line[0] == '\0') {
+            printf("\n");
+            continue;
+        }
+        
+        /* remove status column */
+        while (line[0] && !isspace(line[0]))
+            memmove(line, line+1, strlen(line));
+        
+        /* remove leading whitespace */
+        while (line[0] && isspace(line[0]))
+            memmove(line, line+1, strlen(line));
+        
+        expected = strtoul(line, 0, 0);
+
+        /* remove expected column */
+        while (line[0] && !isspace(line[0]))
+            memmove(line, line+1, strlen(line));
+        
+        /* remove leading whitespace */
+        while (line[0] && isspace(line[0]))
+            memmove(line, line+1, strlen(line));
+                
+        {
+            size_t string_length = strlen(line);
+            size_t original_length = string_length;
+            char status[16];
+            
+            
+            test1(line, original_length, expected, status);
+            fprintf(stdout, "[%s] 0x%09llx %s\n", status, (long long)expected, line);
+        }
+
+    }
+    
+    fclose(fp);
+    return 0;
+}
+
 /* For LightHTTPD */
 time_t log_epoch_secs;
+
+
 
 int main(int argc, char *argv[]) {
     int i;
     int errs = 0;
     int test_count = 0;
     
-    /* LightHTTPD init */
+    /* LightHTTPD init. It's got some weird optimization where it
+     * doesn't call `time(0)` a lot, but instead sticks that value
+     * in a global, and code references the global to avoid a
+     * system call. */
     log_epoch_secs = time(0);
 
     /* MinHTTPD init */
@@ -492,6 +503,27 @@ int main(int argc, char *argv[]) {
         } else if (strcmp("--good", arg) == 0) {
             errs += test_goods();
             test_count++;
+        } else if (strcmp("--date", arg) == 0) {
+            const char *string = argv[i+1];
+            size_t length = strlen(string);
+            char status[16];
+            time_t result;
+            
+            
+            result = parse_http_date(string, length);
+            test1(string, strlen(string), result, status);
+            fprintf(stdout, "[%s] 0x%09llx %s\n", status, (long long)result, string);
+            i++;
+            test_count++;
+        } else if (strcmp("--file", arg) == 0) {
+            const char *string = argv[i+1];
+            errs += test_file(string);
+            i++;
+            test_count++;
+        } else if (arg[0] != '-') {
+            /* assume it's a file */
+            errs += test_file(arg);
+            test_count++;
         }
     }
 
@@ -503,12 +535,12 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "where some tests are:\n");
         fprintf(stderr, " --bad\n");
         fprintf(stderr, " --good\n");
+        fprintf(stderr, " --date <string>\n");
+        fprintf(stderr, " --file <filename>\n");
     }
 
     if (errs)
-        fprintf(stderr, "[-] %d errors\n", errs);
-    else
-        fprintf(stderr, "[+] success!\n");
+        fprintf(stderr, "[-] date test %d errors\n", errs);
     return errs;
 }
 

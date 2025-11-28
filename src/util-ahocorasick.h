@@ -2,6 +2,7 @@
 #define _SMACK_H
 #include <stdio.h>
 #include <limits.h>
+#include <stdint.h>
 
 #define SMACK_NOT_YET_FOUND (SIZE_MAX)
 #define SMACK_CANT_FIND (SIZE_MAX-1)

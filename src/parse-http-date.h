@@ -1,9 +1,11 @@
 #ifndef PARSE_HTTP_DATE_H
 #define PARSE_HTTP_DATE_H
 #include <limits.h>
+#include <time.h>
 
 
 /** 
+ * Some states we external to the state-machien that tells us when it's done.
  */
 enum {
     TEMP_INVALID = 0xFFFd,
@@ -11,6 +13,7 @@ enum {
     DATE_INVALID = 0xFFFf,
 };
 
+/** Some scratch pad state */
 struct HttpDate {
     time_t timestamp;
     unsigned short year; /* 1970 through 2100 */
@@ -49,8 +52,9 @@ struct HttpDate {
  *  Any other value is an an opaque internal state that must be supplied
  *  to the next call of the function on the next fragment of input.
  */
-unsigned parse_http_date(unsigned state, const void *buf, size_t *length, struct HttpDate *result, int is_until_crlf);
+unsigned parse_http_date_crlf(unsigned state, const void *buf, size_t *length, struct HttpDate *result);
 
+time_t parse_http_date(const void *buf, size_t length);
 
 
 /**

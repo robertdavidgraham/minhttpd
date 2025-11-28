@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <ctype.h> /* isdigit() */
 #define __attribute_cold__
-typedef int64_t unix_time64_t;
+typedef time_t unix_time64_t;
 #define TIME64_CAST(ifmtime) ((unix_time64_t)ifmtime)
 extern time_t log_epoch_secs;
 #define light_isdigit(c) isdigit((c)&0xFF)
@@ -302,7 +302,7 @@ http_date_time_to_str (char * const s, const size_t sz, const unix_time64_t t)
   #else
     const char fmt[] = "%a, %d %b %Y %T GMT";       /*IMF-fixdate fmt*/
   #endif
-    return (__builtin_expect( (0 != gmtime64_r(&t, &tm)), 1))
+    return (__builtin_expect( (0 != gmtime_r(&t, &tm)), 1))
       ? (uint32_t)strftime(s, sz, fmt, &tm)
       : 0;
 }

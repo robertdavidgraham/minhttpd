@@ -916,7 +916,7 @@ smack_stage0_compile_prefixes(struct SMACK *smack)
      * Split a pattern into its sub patterns and add each of them
      * to the table.
      */
-    for (a=0; a<(int)smack->m_pattern_count; a++)
+    for (a=0; a<smack->m_pattern_count; a++)
         smack_add_prefixes(smack, smack->m_pattern_list[a]);
 
     /* Set all failed state transitions to return to the 0'th state */
@@ -1207,7 +1207,7 @@ smack_compile(struct SMACK *smack)
      * be overlaps
      */
     smack->m_state_max = 1;
-    for (i=0; i<(int)smack->m_pattern_count; i++) {
+    for (i=0; i<smack->m_pattern_count; i++) {
         struct SmackPattern *pat = smack->m_pattern_list[i];
 
         smack->m_state_max += pat->pattern_length;
