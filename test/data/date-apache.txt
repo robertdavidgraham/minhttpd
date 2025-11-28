@@ -1,0 +1,21 @@
+# These are some test cases from the Apache source, formats that
+# they support that nobody else does, such as supporting actual
+# timezones instead of just GMT. We'll be rejecting these.
+
+[MANLFS] 0x02f52ab68 Tue, 28 Feb 1995 04:49:44 GMT
+[.A--..] 0x02f52ab68 Mon, 27 Feb 1995 20:49:44 -0800
+[MANLFS] 0x042c56281 Fri, 01 Jul 2005 15:34:25 GMT
+[.A.-..] 0x042c56281 Fri,  1 Jul 2005 11:34:25 -0400
+[MANLFS] 0x02f52ab68 Tue, 28 Feb 1995 04:49:44 GMT
+[.A--..] 0x02f52ab68 Monday, 27-Feb-95 20:49:44 -0800
+[MANLFS] 0x0331bfce8 Tue, 04 Mar 1997 10:43:52 GMT
+[.A.-..] 0x0331bfce8 Tue, 4 Mar 1997 12:43:52 +0200
+[MANLFS] 0x02f52ab68 Tue, 28 Feb 1995 04:49:44 GMT
+[.A.-..] 0x02f52ab68 Mon, 27 Feb 95 20:49:44 -0800
+[MANLFS] 0x0331bfce8 Tue, 04 Mar 1997 10:43:52 GMT
+[.A.-..] 0x0331bfce8 Tue,  4 Mar 97 12:43:52 +0200
+[.A.-..] 0x0331bfce8 Tue, 4 Mar 97 12:43:52 +0200
+[MANLFS] 0x02f523abc Mon, 27 Feb 1995 20:49:00 GMT
+[.A....] 0x02f523abc Mon, 27 Feb 95 20:49 GMT
+[MANLFS] 0x0331c18d4 Tue, 04 Mar 1997 12:43:00 GMT
+[.A....] 0x0331c18d4 Tue, 4 Mar 97 12:43 GMT
